@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import YouTube from 'react-youtube';
-import { Heart, X } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -17,7 +17,6 @@ export default function VideoSwiper() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedVideos, setLikedVideos] = useState<Set<string>>(new Set());
-  const [hiddenVideos, setHiddenVideos] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     location: '',
     type: '',
@@ -42,13 +41,7 @@ export default function VideoSwiper() {
     }
 
     const { data } = await query;
-    if (data) {
-      const visibleVideos = data.filter(video => !hiddenVideos.has(video.id));
-      setVideos(visibleVideos);
-      if (currentIndex >= visibleVideos.length) {
-        setCurrentIndex(Math.max(0, visibleVideos.length - 1));
-      }
-    }
+    if (data) setVideos(data);
   }
 
   async function loadLikedVideos() {
@@ -82,7 +75,9 @@ export default function VideoSwiper() {
     
     const video = videos[currentIndex];
     
+    // Check if already liked
     if (likedVideos.has(video.id)) {
+      // Remove like
       const { error } = await supabase
         .from('likes')
         .delete()
@@ -95,6 +90,7 @@ export default function VideoSwiper() {
         setLikedVideos(newLikedVideos);
       }
     } else {
+      // Add like
       const { error } = await supabase
         .from('likes')
         .insert([{ user_id: user.id, video_id: video.id }])
@@ -108,37 +104,8 @@ export default function VideoSwiper() {
     }
   }
 
-  function handleHideVideo() {
-    const video = videos[currentIndex];
-    const newHiddenVideos = new Set(hiddenVideos);
-    newHiddenVideos.add(video.id);
-    setHiddenVideos(newHiddenVideos);
-    
-    const newVideos = videos.filter(v => v.id !== video.id);
-    setVideos(newVideos);
-    
-    if (currentIndex >= newVideos.length) {
-      setCurrentIndex(Math.max(0, newVideos.length - 1));
-    }
-  }
-
   if (videos.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-600">No videos available</p>
-        {hiddenVideos.size > 0 && (
-          <button
-            onClick={() => {
-              setHiddenVideos(new Set());
-              loadVideos();
-            }}
-            className="mt-4 text-indigo-600 hover:text-indigo-700 font-medium"
-          >
-            Reset hidden videos
-          </button>
-        )}
-      </div>
-    );
+    return <div className="text-center">No videos found</div>;
   }
 
   const currentVideo = videos[currentIndex];
@@ -177,44 +144,27 @@ export default function VideoSwiper() {
             width: '100%',
             height: '400',
             playerVars: {
-              autoplay: 0,
-              modestbranding: 1,
-              rel: 0,
-              origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-              enablejsapi: 1
+              autoplay: 1,
             },
           }}
-          onError={(e) => console.error('YouTube Player Error:', e)}
-          className="youtube-player"
         />
         
-        <div className="absolute bottom-4 right-4 flex gap-2">
-          {user && (
-            <button
-              onClick={handleLike}
-              className={`bg-white p-2 rounded-full shadow-lg transition-transform hover:scale-110 ${
-                isLiked ? 'text-red-500' : 'text-gray-400'
-              }`}
-            >
-              <Heart className="w-6 h-6" fill={isLiked ? 'currentColor' : 'none'} />
-            </button>
-          )}
+        {user && (
           <button
-            onClick={handleHideVideo}
-            className="bg-white p-2 rounded-full shadow-lg transition-transform hover:scale-110 text-gray-400 hover:text-gray-600"
+            onClick={handleLike}
+            className={`absolute bottom-4 right-4 bg-white p-2 rounded-full shadow-lg transition-transform hover:scale-110 ${
+              isLiked ? 'text-red-500' : 'text-gray-400'
+            }`}
           >
-            <X className="w-6 h-6" />
+            <Heart className="w-6 h-6" fill={isLiked ? 'currentColor' : 'none'} />
           </button>
-        </div>
+        )}
       </div>
 
       <div className="mt-4 text-center">
         <h3 className="text-xl font-bold">{currentVideo.title}</h3>
         <p className="text-gray-600">
           {currentVideo.location} • {currentVideo.video_type}
-        </p>
-        <p className="text-sm text-gray-500 mt-2">
-          Video {currentIndex + 1} of {videos.length}
         </p>
       </div>
     </div>
