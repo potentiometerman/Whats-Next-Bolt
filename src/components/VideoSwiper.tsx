@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import YouTube from 'react-youtube';
-import { Heart, X, AlertTriangle } from 'lucide-react';
+import { Heart, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,7 +18,6 @@ export default function VideoSwiper() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedVideos, setLikedVideos] = useState<Set<string>>(new Set());
   const [hiddenVideos, setHiddenVideos] = useState<Set<string>>(new Set());
-  const [playerError, setPlayerError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     location: '',
     type: '',
@@ -69,13 +68,11 @@ export default function VideoSwiper() {
     onSwipedLeft: () => {
       if (currentIndex < videos.length - 1) {
         setCurrentIndex(currentIndex + 1);
-        setPlayerError(null);
       }
     },
     onSwipedRight: () => {
       if (currentIndex > 0) {
         setCurrentIndex(currentIndex - 1);
-        setPlayerError(null);
       }
     },
   });
@@ -122,15 +119,6 @@ export default function VideoSwiper() {
     
     if (currentIndex >= newVideos.length) {
       setCurrentIndex(Math.max(0, newVideos.length - 1));
-    }
-  }
-
-  function handlePlayerError(error: any) {
-    console.error('YouTube Player Error:', error);
-    if (error.data === 2) {
-      setPlayerError('This video is unavailable. Please try another one.');
-    } else {
-      setPlayerError('An error occurred while playing the video. Please try again later.');
     }
   }
 
@@ -183,38 +171,20 @@ export default function VideoSwiper() {
       </div>
 
       <div {...handlers} className="relative">
-        {playerError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg z-10">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-md text-center">
-              <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-              <p className="text-gray-700">{playerError}</p>
-              <a
-                href={`https://www.youtube.com/watch?v=${currentVideo.youtube_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-block text-indigo-600 hover:text-indigo-700"
-              >
-                Watch on YouTube
-              </a>
-            </div>
-          </div>
-        )}
-        
         <YouTube
           videoId={currentVideo.youtube_id}
           opts={{
             width: '100%',
             height: '400',
             playerVars: {
-              autoplay: 1,
+              autoplay: 0,
               modestbranding: 1,
               rel: 0,
-              controls: 1,
-              iv_load_policy: 3,
-              fs: 1
+              origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+              enablejsapi: 1
             },
           }}
-          onError={handlePlayerError}
+          onError={(e) => console.error('YouTube Player Error:', e)}
           className="youtube-player"
         />
         
